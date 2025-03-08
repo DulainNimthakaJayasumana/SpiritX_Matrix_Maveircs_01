@@ -1,6 +1,5 @@
 import {ForbiddenException, Injectable} from '@nestjs/common';
 import {PrismaService} from "../prisma/prisma.service";
-import { JwtService } from '@nestjs/jwt';
 import {AuthDto} from "./AuthDTO";
 import * as argon from 'argon2';
 import {PrismaClientKnownRequestError} from "@prisma/client/runtime/client";
@@ -11,7 +10,7 @@ export class AuthService {
 
     constructor(
         private prisma: PrismaService,
-        private jwt: JwtService
+
     ){}
 
 
