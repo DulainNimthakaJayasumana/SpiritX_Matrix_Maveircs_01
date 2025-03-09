@@ -3,14 +3,16 @@ import {PrismaService} from "../prisma/prisma.service";
 import {AuthDto} from "./AuthDTO";
 import * as argon from 'argon2';
 import {PrismaClientKnownRequestError} from "@prisma/client/runtime/client";
-import {catchError} from "rxjs";
+import {ConfigService} from "@nestjs/config";
+import {JwtService} from "@nestjs/jwt";
 
 @Injectable()
 export class AuthService {
 
     constructor(
         private prisma: PrismaService,
-
+        private config: ConfigService,
+        private jwt: JwtService
     ){}
 
 
@@ -32,7 +34,7 @@ export class AuthService {
 
 
 
-            //return the user here.
+            return this.signToken(user.id, user.username);
 
         }catch (error) {
             if (error instanceof PrismaClientKnownRequestError) {
@@ -44,35 +46,59 @@ export class AuthService {
         }
     }
 
+    async signToken(
+        sub: number,
+        username: string,
+
+    ){
+
+        const payload = {
+            sub,
+            username,
+
+        }
+
+        const secret = this.config.get('JWT_SECRET');
+
+        const token = await this.jwt.signAsync(
+            payload,
+            {
+                expiresIn: '15m',
+                secret,
+            });
+
+        return {
+            access_token:token,
+        };
+
+
+    }
+
+
 
     async login(dto: AuthDto){
 
-        try{
-            const user = await this.prisma.user.findUniqueOrThrow({
-                where: {
-                    username: dto.username
-                }
-            });
 
-            //check of the password compatibility
-
-            const {password, ...safeUser} = user;
-            // return the user
-
-
-
-
-
-        }catch (error) {
-            if (error instanceof PrismaClientKnownRequestError) {
-                if (error.code === 'P2025') {
-                    throw new ForbiddenException('User not found');
-                }
+        const user = await this.prisma.user.findUnique({
+            where: {
+                username: dto.username
             }
+        });
+
+        if (!user) {
+            throw new ForbiddenException('Credentials incorrect');
+        }
+
+        const matched = await argon.verify(user.password, dto.password);
+
+        if (!matched) {
+            throw new ForbiddenException('Credentials incorrect ');
         }
 
 
+        return this.signToken(user.id, user.username);
 
+        
     }
 
 
