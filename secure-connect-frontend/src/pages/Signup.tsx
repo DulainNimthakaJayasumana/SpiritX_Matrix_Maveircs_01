@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+//, useNavigate
 import { toast } from 'react-toastify';
 import { useForm } from 'react-hook-form';
+import axios from 'axios';
 
 interface SignupFormData {
   username: string;
@@ -10,8 +12,11 @@ interface SignupFormData {
 }
 
 function Signup() {
-  const navigate = useNavigate();
-  const { register, handleSubmit, watch, formState: { errors }, setError } = useForm<SignupFormData>();
+  // const navigate = useNavigate();
+
+
+
+  const { register, handleSubmit, watch, formState: { errors }, setError,reset } = useForm<SignupFormData>();
   const [passwordMatch, setPasswordMatch] = useState(true);
 
   const password = watch('password');
@@ -25,17 +30,27 @@ function Signup() {
 
   const onSubmit = (data: SignupFormData) => {
     if (data.password !== data.confirmPassword) {
-      setError('confirmPassword', {
-        type: 'manual',
-        message: 'Passwords do not match'
-      });
+      setError('confirmPassword', { type: 'manual', message: 'Passwords do not match' });
       return;
     }
 
-    toast.success('Account created successfully!');
-    setTimeout(() => {
-      navigate('/');
-    }, 2000);
+    // NEW: Send the signup data to the backend using Axios
+    axios.post('http://localhost:3060/auth/signUp', { // CHANGE port/endpoint as needed
+      username: data.username,
+      password: data.password
+    })
+        .then(response => {
+          // Save the bearer token (assuming it's in response.data.token)
+          localStorage.setItem('token', response.data.access_token);
+          toast.success('Account created successfully!');
+          reset(); // NEW: Clear form fields
+          // Optionally, navigate to another page after signup
+          // navigate('/');
+        })
+        .catch(error => {
+          toast.error('Signup failed.');
+          console.error(error);
+        });
   };
 
   return (
